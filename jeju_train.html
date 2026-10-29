@@ -1,0 +1,500 @@
+<title>제주 곡예 열차</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&display=swap">
+<style>
+  /* layout: full-screen 3D game; HUD top-left, menu top-right, banner under HUD, power bar bottom-center */
+  :root {
+    --sky: #cfe8f3; --ink: #16324a; --panel: rgba(255, 255, 255, 0.94); --line: #c9d8e2;
+    --tangerine: #ff8a1f; --leaf: #2fa66a; --camellia: #ff5c8a; color-scheme: light;
+    --font: 'Jua', 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
+  }
+  html, body { height: 100%; }
+  body { margin: 0; background: var(--sky); color: var(--ink); font-family: var(--font); overflow: hidden; user-select: none; -webkit-user-select: none; }
+  canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+  #hud { position: fixed; top: calc(10px + env(safe-area-inset-top, 0px)); left: max(16px, env(safe-area-inset-left, 0px)); pointer-events: none; text-shadow: 0 1px 0 #fff, 0 0 6px #fff; }
+  #score { font-size: 34px; line-height: 1; font-variant-numeric: tabular-nums; }
+  #score span { font-size: 13px; margin-left: 4px; }
+  #best { font-size: 13px; margin-top: 2px; font-variant-numeric: tabular-nums; }
+  #menuBtn { position: fixed; top: calc(10px + env(safe-area-inset-top, 0px)); right: max(16px, env(safe-area-inset-right, 0px)); width: 40px; height: 40px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--ink); font-size: 20px; cursor: pointer; }
+  button:focus-visible { outline: 3px solid var(--tangerine); outline-offset: 2px; }
+  #banner { position: fixed; top: calc(62px + env(safe-area-inset-top, 0px)); left: 50%; transform: translateX(-50%); width: min(calc(100% - 32px), 560px); box-sizing: border-box; padding: 10px 14px; text-align: center; font-size: 16px; background: var(--panel); border-radius: 8px; border: 1px solid var(--line); pointer-events: none; }
+  #banner b { color: var(--leaf); font-weight: 400; }
+  #power { position: fixed; bottom: calc(30px + env(safe-area-inset-bottom, 0px)); left: 50%; transform: translateX(-50%); width: min(240px, 60vw); height: 14px; border-radius: 7px; background: rgba(255, 255, 255, 0.7); border: 1px solid var(--line); overflow: hidden; opacity: 0; transition: opacity 0.15s; pointer-events: none; }
+  #power.on { opacity: 1; }
+  #power i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--leaf), var(--tangerine), var(--camellia)); }
+  #toast { position: fixed; left: 0; right: 0; top: 34%; text-align: center; font-size: clamp(28px, 7vw, 46px); color: #fff; -webkit-text-stroke: 2px var(--ink); paint-order: stroke fill; text-shadow: 0 3px 0 var(--ink); pointer-events: none; opacity: 0; }
+  #toast.show { animation: pop 1.1s ease-out; }
+  @keyframes pop { 0% { opacity: 0; transform: scale(0.6); } 15% { opacity: 1; transform: scale(1.08); } 25% { transform: scale(1); } 80% { opacity: 1; } 100% { opacity: 0; transform: translateY(-18px); } }
+  .card { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(calc(100% - 32px), 360px); box-sizing: border-box; padding: 20px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 12px 40px rgba(22, 50, 74, 0.25); max-height: calc(100% - 40px); overflow-y: auto; }
+  .card h2 { margin: 0 0 12px; font-size: 24px; font-weight: 400; }
+  .card h3 { margin: 16px 0 6px; font-size: 16px; font-weight: 400; color: var(--leaf); }
+  .card ul { margin: 0; padding-left: 18px; font-size: 14px; line-height: 1.6; }
+  .card dl { margin: 0 0 16px; display: grid; grid-template-columns: 1fr auto; gap: 6px 12px; font-size: 16px; font-variant-numeric: tabular-nums; }
+  .card dt { color: #51697d; }
+  .card dd { margin: 0; text-align: right; }
+  .card dd.total { font-size: 22px; color: var(--tangerine); }
+  .card button { font: inherit; font-size: 18px; width: 100%; padding: 12px; margin-top: 14px; border: 0; border-radius: 8px; background: var(--tangerine); color: #fff; cursor: pointer; }
+  [hidden] { display: none !important; }
+</style>
+
+<div id="hud"><div id="score"><b id="sc" style="font-weight:400">0</b><span>포인트</span></div><div id="best">최고 <span id="bs">0</span></div></div>
+<button id="menuBtn" type="button" aria-label="도움말 열기">☰</button>
+<div id="banner"></div>
+<div id="power"><i id="powerFill"></i></div>
+<div id="toast"></div>
+
+<section id="result" class="card" hidden>
+  <h2 id="rTitle"></h2>
+  <dl id="rList"></dl>
+  <button id="again" type="button">다시 도전</button>
+</section>
+
+<section id="help" class="card" hidden>
+  <h2>조작법</h2>
+  <ul>
+    <li>열차를 위로 쓸어올리면 발사됩니다. 길게 쓸수록 빨라집니다.</li>
+    <li>공중에서 화면을 탭하면 앞구르기를 합니다. 착지 전에 한 바퀴를 끝내면 보너스입니다.</li>
+    <li>공중에서 좌우로 드래그하면 방향을 바꿉니다.</li>
+    <li>분홍 링을 통과하면 점수를 얻고, 연속할수록 커집니다.</li>
+    <li>키보드: 스페이스 발사/회전, ← → 방향</li>
+  </ul>
+  <h3>제주 한마디</h3>
+  <ul>
+    <li>한라산은 높이 1,947m로 남한에서 가장 높은 산입니다.</li>
+    <li>돌하르방은 제주를 대표하는 돌 조각상입니다.</li>
+    <li>밭 사이의 검은 돌담은 화산암(현무암)으로 쌓았습니다.</li>
+    <li>감귤은 제주의 대표 특산물입니다.</li>
+  </ul>
+  <button id="closeHelp" type="button">닫기</button>
+</section>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function () {
+  const $ = id => document.getElementById(id);
+  const clamp = (a, lo, hi) => Math.max(lo, Math.min(hi, a));
+  const wrap = a => { a = (a + Math.PI) % (Math.PI * 2); if (a < 0) a += Math.PI * 2; return a - Math.PI; };
+  const rnd = (() => { let a = 20241029; return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; })();
+  const M = (c, o) => new THREE.MeshLambertMaterial(Object.assign({ color: c }, o || {}));
+
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  const cv = renderer.domElement;
+  document.body.insertBefore(cv, document.body.firstChild);
+
+  const scene = new THREE.Scene();
+  scene.fog = new THREE.Fog(0xcfe8f3, 250, 2400);
+  const camera = new THREE.PerspectiveCamera(60, 1, 0.5, 4000);
+  scene.add(new THREE.HemisphereLight(0xe3f2ff, 0x6a8a50, 0.95));
+  const sun = new THREE.DirectionalLight(0xfff3d6, 0.85);
+  sun.position.set(-60, 120, 40);
+  scene.add(sun);
+
+  // 하늘 돔
+  const sky = (() => {
+    const g = new THREE.SphereGeometry(2800, 24, 16);
+    const pos = g.attributes.position, col = [];
+    const top = new THREE.Color(0x3d93e0), hor = new THREE.Color(0xcfe8f3), c = new THREE.Color();
+    for (let i = 0; i < pos.count; i++) {
+      const t = clamp(pos.getY(i) / 2800, 0, 1);
+      c.copy(hor).lerp(top, Math.pow(t, 0.6));
+      col.push(c.r, c.g, c.b);
+    }
+    g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+    const m = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide, fog: false, depthWrite: false }));
+    scene.add(m);
+    return m;
+  })();
+
+  // 바다, 섬, 해변
+  const flat = (w, h, color, x, y, z) => {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), M(color));
+    m.rotation.x = -Math.PI / 2; m.position.set(x, y, z); scene.add(m); return m;
+  };
+  flat(6000, 6000, 0x2a8fd0, 0, -0.6, 0);
+  flat(1000, 1700, 0x86c466, 380, 0, -650);
+  flat(34, 1700, 0xe8d9a8, -137, -0.02, -650);
+
+  // 유채꽃·밭 (돌담 바깥)
+  for (let i = 0; i < 16; i++) {
+    const w = 18 + rnd() * 26, l = 22 + rnd() * 40;
+    flat(w, l, i % 3 === 0 ? 0x78b85c : 0xf4d03a, 20 + w / 2 + rnd() * 40, 0.03 + i * 0.001, 60 - rnd() * 480);
+  }
+  for (let i = 0; i < 8; i++) {
+    const w = 20 + rnd() * 30, l = 24 + rnd() * 40;
+    flat(w, l, i % 2 ? 0x6fb04f : 0x9ccf6a, -20 - w / 2 - rnd() * 40, 0.03 + i * 0.001, 60 - rnd() * 480);
+  }
+
+  // 한라산
+  (() => {
+    const R = 560, H = 200, pts = [new THREE.Vector2(0, H - 8), new THREE.Vector2(26, H)];
+    for (let i = 1; i <= 24; i++) { const r = 26 + (R - 26) * i / 24, u = (r - 26) / (R - 26); pts.push(new THREE.Vector2(r, H * Math.pow(1 - u, 1.5))); }
+    pts.push(new THREE.Vector2(R + 10, -10));
+    const g = new THREE.LatheGeometry(pts, 40), pos = g.attributes.position, col = [];
+    const lo = new THREE.Color(0x78b85c), mid = new THREE.Color(0x4d8a46), hi = new THREE.Color(0x8d8579), c = new THREE.Color();
+    for (let i = 0; i < pos.count; i++) {
+      const t = clamp(pos.getY(i) / H, 0, 1);
+      if (t < 0.45) c.copy(lo).lerp(mid, t / 0.45); else c.copy(mid).lerp(hi, (t - 0.45) / 0.55);
+      col.push(c.r, c.g, c.b);
+    }
+    g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+    const m = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true, side: THREE.DoubleSide }));
+    m.position.set(150, 0, -820);
+    scene.add(m);
+    // 오름
+    const hg = new THREE.SphereGeometry(1, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2);
+    [[-80, -140, 42, 14], [90, -260, 55, 18], [-60, -380, 48, 16], [130, -60, 36, 11], [-120, -520, 70, 24]].forEach(([x, z, r, h]) => {
+      const o = new THREE.Mesh(hg, M(0x68a850, { flatShading: true }));
+      o.scale.set(r, h, r); o.position.set(x, 0, z); scene.add(o);
+    });
+  })();
+
+  // 돌담 (현무암)
+  (() => {
+    const N = 2000, im = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshLambertMaterial({ color: 0xffffff }), N);
+    const m = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3(), p = new THREE.Vector3(), c = new THREE.Color(), e = new THREE.Euler();
+    let i = 0;
+    for (const side of [-1, 1]) for (let z = 60; z > -420; z -= 1.6) for (let row = 0; row < 3; row++) {
+      p.set(side * (15 + (rnd() - 0.5) * 0.4), 0.4 + row * 0.7, z + (row % 2 ? 0.8 : 0) + (rnd() - 0.5) * 0.2);
+      s.set(1.5 + rnd() * 0.5, 0.65 + rnd() * 0.2, 1.5 + rnd() * 0.4);
+      e.set(0, (rnd() - 0.5) * 0.3, 0); q.setFromEuler(e);
+      m.compose(p, q, s); im.setMatrixAt(i, m);
+      c.setHSL(0.6, 0.05, 0.14 + rnd() * 0.12); im.setColorAt(i, c); i++;
+    }
+    im.count = i; scene.add(im);
+  })();
+
+  // 감귤나무
+  const trunkG = new THREE.CylinderGeometry(0.35, 0.5, 2.2, 6), leafG = new THREE.SphereGeometry(2.6, 10, 8), fruitG = new THREE.SphereGeometry(0.4, 8, 6);
+  const trunkM = M(0x6b4a2f), leafM = M(0x3f9a45, { flatShading: true }), fruitM = new THREE.MeshLambertMaterial({ color: 0xff8a1f, emissive: 0x552200 });
+  function tangerineTree(x, z, s) {
+    const g = new THREE.Group();
+    const t = new THREE.Mesh(trunkG, trunkM); t.position.y = 1.1; g.add(t);
+    const l = new THREE.Mesh(leafG, leafM); l.position.y = 3.6; l.scale.y = 0.85; g.add(l);
+    for (let i = 0; i < 6; i++) {
+      const a = rnd() * 6.283, h = rnd() * 1.6 - 0.4, r = Math.sqrt(Math.max(0, 2.6 * 2.6 - h * h)) * 0.97;
+      const f = new THREE.Mesh(fruitG, fruitM); f.position.set(Math.cos(a) * r, 3.6 + h, Math.sin(a) * r); g.add(f);
+    }
+    g.position.set(x, 0, z); g.scale.setScalar(s); scene.add(g);
+  }
+  for (let i = 0; i < 70; i++) {
+    const side = rnd() < 0.5 ? -1 : 1;
+    tangerineTree(side * (22 + rnd() * 60), 50 - rnd() * 470, 0.9 + rnd() * 0.6);
+  }
+
+  // 야자수 (해변)
+  for (let i = 0; i < 12; i++) {
+    const g = new THREE.Group(), h = 9 + rnd() * 4;
+    const t = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.6, h, 6), M(0x8a6a44)); t.position.y = h / 2; t.rotation.z = (rnd() - 0.5) * 0.25; g.add(t);
+    for (let k = 0; k < 7; k++) {
+      const leaf = new THREE.Mesh(new THREE.BoxGeometry(5.5, 0.15, 1.2), M(0x3a9a4a));
+      leaf.position.set(Math.cos(k * 0.9) * 2.4, h + 0.2, Math.sin(k * 0.9) * 2.4);
+      leaf.rotation.y = -k * 0.9; leaf.rotation.z = -0.3; g.add(leaf);
+    }
+    g.position.set(-112 - rnd() * 20, 0, 40 - rnd() * 440); scene.add(g);
+  }
+
+  // 돌하르방
+  function dolhareubang(x, z, s) {
+    const g = new THREE.Group(), stone = M(0x7a756e, { flatShading: true }), dark = M(0x1a1a1a);
+    const base = new THREE.Mesh(new THREE.CylinderGeometry(1.3, 1.6, 2, 10), stone); base.position.y = 1; g.add(base);
+    const head = new THREE.Mesh(new THREE.SphereGeometry(1.25, 12, 10), stone); head.scale.y = 1.1; head.position.y = 3.1; g.add(head);
+    const hat = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 1.35, 0.7, 10), stone); hat.position.y = 4.3; g.add(hat);
+    for (const sx of [-0.45, 0.45]) { const eye = new THREE.Mesh(new THREE.SphereGeometry(0.17, 8, 6), dark); eye.position.set(sx, 3.35, 1.15); g.add(eye); }
+    const nose = new THREE.Mesh(new THREE.SphereGeometry(0.28, 8, 6), stone); nose.position.set(0, 3.0, 1.3); g.add(nose);
+    for (const sx of [-1, 1]) { const hand = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.9), stone); hand.position.set(sx * 0.6, 1.5, 1.35); g.add(hand); }
+    g.position.set(x, 0, z); g.scale.setScalar(s); g.rotation.y = x > 0 ? -Math.PI / 2 + 0.3 : Math.PI / 2 - 0.3; scene.add(g);
+  }
+  dolhareubang(-7.5, 8, 1.5); dolhareubang(7.5, 8, 1.5);
+  dolhareubang(-8, -50, 1.8); dolhareubang(8, -50, 1.8);
+
+  // 풍력발전기
+  const blades = [];
+  [[52, -95], [78, -190], [58, -300], [100, -130], [-48, -230]].forEach(([x, z]) => {
+    const g = new THREE.Group(), white = M(0xf4f6f8);
+    const tw = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.9, 28, 8), white); tw.position.y = 14; g.add(tw);
+    const hub = new THREE.Group(); hub.position.set(0, 28, 1.2);
+    for (let k = 0; k < 3; k++) { const b = new THREE.Mesh(new THREE.BoxGeometry(0.7, 13, 0.18), white); b.position.y = 6.5; const pv = new THREE.Group(); pv.rotation.z = k * 2.094; pv.add(b); hub.add(pv); }
+    g.add(hub); g.position.set(x, 0, z); scene.add(g); blades.push(hub);
+  });
+
+  // 구름
+  const clouds = [];
+  for (let i = 0; i < 14; i++) {
+    const g = new THREE.Group(), cm = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.92, fog: false });
+    for (let k = 0; k < 4; k++) { const s = new THREE.Mesh(new THREE.SphereGeometry(8 + rnd() * 8, 10, 8), cm); s.position.set(k * 11 - 16, rnd() * 4, rnd() * 6); s.scale.y = 0.6; g.add(s); }
+    g.position.set(-500 + rnd() * 1000, 90 + rnd() * 60, -100 - rnd() * 900); scene.add(g); clouds.push(g);
+  }
+
+  // 선로
+  const ballastM = M(0x8d8a84), railM = M(0xc4c8d0), sleeperM = M(0x6b4a2f);
+  function makeTrack(len) {
+    const g = new THREE.Group();
+    const b = new THREE.Mesh(new THREE.BoxGeometry(5.4, 0.3, len), ballastM); b.position.y = 0.15; g.add(b);
+    for (const s of [-1, 1]) { const r = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.3, len), railM); r.position.set(s * 1.1, 0.45, 0); g.add(r); }
+    const n = Math.floor(len / 1.2), im = new THREE.InstancedMesh(new THREE.BoxGeometry(3.4, 0.18, 0.5), sleeperM, n), m = new THREE.Matrix4();
+    for (let i = 0; i < n; i++) { m.setPosition(0, 0.32, -len / 2 + 0.6 + i * 1.2); im.setMatrixAt(i, m); }
+    g.add(im); return g;
+  }
+  const SLOPE = 0.3, THETA = Math.atan(SLOPE), RAMP0 = -60, RAMP1 = -90, END = -398, G = 14, TY = 2.3;
+  const t1 = makeTrack(100); t1.position.set(0, 0, -10); scene.add(t1);
+  const t2 = makeTrack(310); t2.position.set(0, 0, -245); scene.add(t2);
+  const ramp = makeTrack(30 / Math.cos(THETA)); ramp.position.set(0, 4.5, -75); ramp.rotation.x = THETA; scene.add(ramp);
+  (() => {
+    const sh = new THREE.Shape(); sh.moveTo(0, 0); sh.lineTo(30, 0); sh.lineTo(30, 9); sh.lineTo(0, 0);
+    const wg = new THREE.ExtrudeGeometry(sh, { depth: 5.2, bevelEnabled: false }); wg.rotateY(Math.PI / 2);
+    const w = new THREE.Mesh(wg, M(0xa9a59e)); w.position.set(-2.6, 0, -60); scene.add(w);
+    const stop = new THREE.Mesh(new THREE.BoxGeometry(5, 3, 1.5), M(0xd23b3b)); stop.position.set(0, 1.5, -402); scene.add(stop);
+  })();
+
+  // 입구 아치
+  (() => {
+    const stone = M(0x45454c, { flatShading: true });
+    for (const s of [-1, 1]) { const p = new THREE.Mesh(new THREE.BoxGeometry(1.6, 10, 1.6), stone); p.position.set(s * 5.2, 5, -30); scene.add(p); }
+    const beam = new THREE.Mesh(new THREE.BoxGeometry(12.4, 1.4, 1.8), stone); beam.position.set(0, 10.4, -30); scene.add(beam);
+    const c = document.createElement('canvas'); c.width = 512; c.height = 128;
+    const x = c.getContext('2d');
+    x.fillStyle = '#fff'; x.fillRect(0, 0, 512, 128);
+    x.strokeStyle = '#ff8a1f'; x.lineWidth = 10; x.strokeRect(5, 5, 502, 118);
+    x.fillStyle = '#ff6a00'; x.font = '64px Jua, "Malgun Gothic", sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle';
+    x.fillText('제주 감귤 열차', 256, 68);
+    const sign = new THREE.Mesh(new THREE.PlaneGeometry(10, 2.5), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(c) }));
+    sign.position.set(0, 12.1, -29.1); scene.add(sign);
+  })();
+
+  // 열차 (감귤색 3량)
+  const train = new THREE.Group();
+  (() => {
+    const body = M(0xff8a1f), roof = M(0xf2f4f7), glass = M(0x1d3550), stripe = M(0x1aa7b8), dark = M(0x2a2d33);
+    const lamp = new THREE.MeshBasicMaterial({ color: 0xfff1a8 });
+    [-8, 0, 8].forEach(zc => {
+      const add = (geo, mat, x, y, z) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); train.add(m); return m; };
+      add(new THREE.BoxGeometry(3.1, 3, 7.2), body, 0, 0.35, zc);
+      add(new THREE.BoxGeometry(2.7, 0.35, 6.8), roof, 0, 2.0, zc);
+      add(new THREE.BoxGeometry(3.16, 0.5, 7.22), stripe, 0, -0.55, zc);
+      add(new THREE.BoxGeometry(3.18, 0.9, 5.6), glass, 0, 0.75, zc);
+      add(new THREE.BoxGeometry(2.6, 0.7, 2.2), dark, 0, -1.25, zc - 2.3);
+      add(new THREE.BoxGeometry(2.6, 0.7, 2.2), dark, 0, -1.25, zc + 2.3);
+    });
+    [-4, 4].forEach(z => { const m = new THREE.Mesh(new THREE.BoxGeometry(2.4, 2.4, 0.8), dark); m.position.set(0, 0.2, z); train.add(m); });
+    const ws = new THREE.Mesh(new THREE.BoxGeometry(2.6, 1.1, 0.1), glass); ws.position.set(0, 0.85, -11.62); train.add(ws);
+    for (const s of [-1, 1]) { const l = new THREE.Mesh(new THREE.SphereGeometry(0.2, 8, 6), lamp); l.position.set(s * 1.1, -0.5, -11.62); train.add(l); }
+    const disk = new THREE.Mesh(new THREE.CircleGeometry(0.55, 20), new THREE.MeshBasicMaterial({ color: 0xffffff })); disk.position.set(0, -0.35, -11.64); disk.rotation.y = Math.PI; train.add(disk);
+    const fruit = new THREE.Mesh(new THREE.CircleGeometry(0.42, 20), new THREE.MeshBasicMaterial({ color: 0xff6a00 })); fruit.position.set(0, -0.35, -11.66); fruit.rotation.y = Math.PI; train.add(fruit);
+    const leaf = new THREE.Mesh(new THREE.CircleGeometry(0.16, 8), new THREE.MeshBasicMaterial({ color: 0x2fa66a })); leaf.position.set(0.12, 0.05, -11.67); leaf.rotation.y = Math.PI; train.add(leaf);
+  })();
+  scene.add(train);
+  const guide = new THREE.Mesh(new THREE.TorusGeometry(1.4, 0.14, 8, 32), new THREE.MeshBasicMaterial({ color: 0x2fa66a }));
+  guide.rotation.y = Math.PI / 2; guide.position.set(1.7, 0.3, -6); train.add(guide);
+
+  const shadow = new THREE.Mesh(new THREE.PlaneGeometry(4, 20), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.3, depthWrite: false }));
+  shadow.rotation.x = -Math.PI / 2; shadow.visible = false; scene.add(shadow);
+
+  // 링
+  const ringGeo = new THREE.TorusGeometry(4, 0.38, 12, 40);
+  const rings = [[0, 12.5, -112], [0, 16, -138], [-3, 15, -160], [3, 12.5, -182], [0, 18, -202], [-3, 15.5, -226], [3, 11, -250], [0, 2.8, -285], [0, 2.8, -320], [0, 2.8, -355]].map(([x, y, z]) => {
+    const m = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ color: 0xff5c8a, transparent: true }));
+    m.position.set(x, y, z); scene.add(m);
+    return { m, x, y, z, hit: false, t: 0 };
+  });
+
+  // 상태
+  const P = { x: 0, y: TY, z: 0 };
+  let state = 'ready', v = 0, vy = 0, vx = 0, pitch = 0, flip = 0, flipTarget = 0, steer = 0, rollZ = 0;
+  let score = 0, ringCount = 0, flightStartZ = 0, shake = 0, summary = null;
+  let best = 0;
+  try { best = +localStorage.getItem('jejuTrainBest') || 0; } catch (e) {}
+  $('bs').textContent = best;
+
+  const banner = $('banner');
+  function setBanner(html) { banner.innerHTML = html; banner.hidden = !html; }
+  function toast(t) { const el = $('toast'); el.textContent = t; el.classList.remove('show'); void el.offsetWidth; el.classList.add('show'); }
+  function addScore(n) { score += n; $('sc').textContent = score.toLocaleString(); }
+
+  function reset() {
+    state = 'ready'; P.x = 0; P.y = TY; P.z = 0; v = vy = vx = pitch = flip = flipTarget = steer = rollZ = 0;
+    score = 0; ringCount = 0; summary = null; $('sc').textContent = '0';
+    rings.forEach(r => { r.hit = false; r.t = 0; r.m.visible = true; r.m.scale.setScalar(1); r.m.material.color.setHex(0xff5c8a); r.m.material.opacity = 1; });
+    guide.visible = true; shadow.visible = false;
+    $('result').hidden = true;
+    setBanner('열차를 <b>위로 쓸어올려</b> 발사하세요');
+  }
+
+  function launch(p) {
+    if (state !== 'ready') return;
+    v = 26 + p * 36; state = 'ground'; guide.visible = false;
+    setBanner('속도를 올리는 중…');
+  }
+
+  function addFlip() {
+    if (state !== 'air') return;
+    if (flipTarget - flip < Math.PI * 2 * 1.5) flipTarget += Math.PI * 2;
+  }
+
+  function ringHit(r) {
+    r.hit = true; r.t = 0.6; r.m.material.color.setHex(0xffd23c);
+    ringCount++;
+    const pts = 100 + 50 * (ringCount - 1);
+    addScore(pts); toast('링 +' + pts);
+  }
+
+  function land(flown) {
+    const ok = Math.abs(wrap(pitch)) < 1.0 && Math.abs(P.x) < 3.5;
+    const flips = Math.floor(flip / (Math.PI * 2) + 1e-3);
+    const distPts = Math.round(flown) * 2;
+    P.y = TY; flipTarget = 0;
+    if (ok) {
+      const bonus = flips * 500;
+      addScore(bonus + distPts);
+      state = 'roll'; vy = 0; v *= 0.92; shake = 0.3; flip = 0;
+      summary = { ok, flown, flips, bonus, distPts };
+      toast(flips ? '착지 성공! 회전 ×' + flips : '착지 성공!');
+      setBanner('착지 성공! 선로를 따라 달립니다');
+    } else {
+      addScore(distPts);
+      state = 'crash'; vy = 7; v *= 0.55; shake = 1;
+      summary = { ok, flown, flips, bonus: 0, distPts };
+      toast('착지 실패!');
+      setBanner('착지 실패…');
+    }
+  }
+
+  function finish() {
+    if (state === 'done') return;
+    state = 'done';
+    if (score > best) { best = score; $('bs').textContent = best; try { localStorage.setItem('jejuTrainBest', best); } catch (e) {} }
+    setTimeout(showResult, 700);
+  }
+
+  function showResult() {
+    if (state !== 'done') return;
+    const s = summary || { ok: false, flown: 0, flips: 0, bonus: 0, distPts: 0 };
+    $('rTitle').textContent = s.ok ? '착지 성공!' : '아쉬워요';
+    const rows = [['비행 거리', Math.round(s.flown) + 'm'], ['통과한 링', ringCount + '개'], ['앞구르기', s.flips + '회' + (s.bonus ? ' (+' + s.bonus + ')' : '')], ['총점', null, score.toLocaleString()]];
+    $('rList').innerHTML = rows.map(r => r[1] === null ? '<dt>' + r[0] + '</dt><dd class="total">' + r[2] + '</dd>' : '<dt>' + r[0] + '</dt><dd>' + r[1] + '</dd>').join('');
+    $('result').hidden = false; setBanner('');
+  }
+
+  function update(dt) {
+    const prevZ = P.z;
+    switch (state) {
+      case 'ground':
+        P.z -= v * dt; v -= dt;
+        if (P.z <= RAMP0) { state = 'ramp'; }
+        break;
+      case 'ramp': {
+        P.z -= v * dt;
+        P.y = (RAMP0 - P.z) * SLOPE + TY;
+        pitch += (THETA - pitch) * Math.min(1, dt * 10);
+        v -= G * Math.sin(THETA) * dt * 0.6;
+        if (P.z <= RAMP1) {
+          state = 'air'; vy = v * SLOPE; flightStartZ = P.z; flip = flipTarget = 0;
+          setBanner('<b>탭</b> 앞구르기 · <b>좌우 드래그</b> 방향');
+        }
+        break;
+      }
+      case 'air': {
+        P.z -= v * dt; vy -= G * dt; P.y += vy * dt;
+        vx += (steer * 11 - vx) * Math.min(1, dt * 6);
+        P.x = clamp(P.x + vx * dt, -11, 11);
+        if (flip < flipTarget) flip = Math.min(flipTarget, flip + 7 * dt);
+        pitch = Math.atan2(vy, v) - flip;
+        if (P.y <= TY && vy < 0) land(flightStartZ - P.z);
+        break;
+      }
+      case 'roll':
+        P.z -= v * dt; v -= 18 * dt;
+        P.x += (0 - P.x) * Math.min(1, dt * 4);
+        pitch += (0 - pitch) * Math.min(1, dt * 6);
+        if (P.z <= END) { P.z = END; v = 0; }
+        if (v <= 0.5) finish();
+        break;
+      case 'crash':
+        P.z -= v * dt; vy -= G * dt; P.y += vy * dt;
+        pitch -= 4 * dt * Math.min(1, v / 20 + 0.3); rollZ += 3 * dt;
+        v = Math.max(0, v - 10 * dt);
+        if (P.y <= TY) { P.y = TY; if (vy < -3) vy = -vy * 0.35; else { vy = 0; v = Math.max(0, v - 25 * dt); } }
+        if (P.z <= END) { P.z = END; v = 0; }
+        if (v <= 0.5 && vy === 0) finish();
+        break;
+    }
+    if (state === 'air' || state === 'roll') {
+      for (const r of rings) {
+        if (!r.hit && prevZ > r.z && P.z <= r.z && Math.hypot(P.x - r.x, P.y - r.y) < 4.4) ringHit(r);
+      }
+    }
+  }
+
+  // 입력
+  let pt = null, menuOpen = false;
+  const powerEl = $('power'), powerFill = $('powerFill');
+  const powerOf = dy => clamp(dy / (innerHeight * 0.4), 0, 1);
+  cv.addEventListener('pointerdown', e => { if (menuOpen) return; pt = { x0: e.clientX, y0: e.clientY, t: performance.now() }; try { cv.setPointerCapture(e.pointerId); } catch (er) {} });
+  cv.addEventListener('pointermove', e => {
+    if (!pt) return;
+    const dx = e.clientX - pt.x0, dy = pt.y0 - e.clientY;
+    if (state === 'ready') { powerEl.classList.add('on'); powerFill.style.width = powerOf(dy) * 100 + '%'; }
+    if (state === 'air') steer = clamp(dx / 90, -1, 1);
+  });
+  const end = e => {
+    if (!pt) return;
+    const dx = e.clientX - pt.x0, dy = pt.y0 - e.clientY, dur = performance.now() - pt.t;
+    if (state === 'ready' && dy > 40) launch(powerOf(dy));
+    else if (state === 'air' && Math.hypot(dx, dy) < 12 && dur < 350) addFlip();
+    steer = 0; pt = null; powerEl.classList.remove('on');
+  };
+  cv.addEventListener('pointerup', end);
+  cv.addEventListener('pointercancel', end);
+  addEventListener('keydown', e => {
+    if (e.code === 'Space') { e.preventDefault(); if (state === 'ready') launch(0.75); else addFlip(); }
+    if (e.code === 'ArrowLeft') steer = -1;
+    if (e.code === 'ArrowRight') steer = 1;
+  });
+  addEventListener('keyup', e => { if (e.code === 'ArrowLeft' || e.code === 'ArrowRight') steer = 0; });
+  $('again').addEventListener('click', reset);
+  $('menuBtn').addEventListener('click', () => { menuOpen = !menuOpen; $('help').hidden = !menuOpen; });
+  $('closeHelp').addEventListener('click', () => { menuOpen = false; $('help').hidden = true; });
+
+  function resize() { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); }
+  addEventListener('resize', resize); resize();
+
+  // 카메라
+  const camPos = new THREE.Vector3(6, 6.5, 19), look = new THREE.Vector3(0, 2.5, -5), camTarget = new THREE.Vector3(), lookTarget = new THREE.Vector3();
+  camera.position.copy(camPos);
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  reset();
+  let last = performance.now();
+  function frame(now) {
+    requestAnimationFrame(frame);
+    const dt = Math.min(0.05, (now - last) / 1000); last = now;
+    update(dt);
+
+    train.position.set(P.x, P.y, P.z);
+    train.rotation.x = pitch; train.rotation.z = state === 'crash' ? rollZ : 0;
+    if (state === 'ready') { guide.scale.setScalar(1 + Math.sin(now / 250) * 0.15); }
+
+    const showShadow = state === 'air' || state === 'roll' || state === 'crash';
+    shadow.visible = showShadow;
+    if (showShadow) { shadow.position.set(P.x, 0.08, P.z); shadow.material.opacity = clamp(0.45 - (P.y - TY) / 60, 0.1, 0.45); }
+
+    for (const r of rings) {
+      r.m.rotation.z += dt * 0.8;
+      if (r.t > 0) { r.t -= dt; const k = 1 + (0.6 - r.t) * 1.2; r.m.scale.setScalar(k); r.m.material.opacity = Math.max(0, r.t / 0.6); if (r.t <= 0) r.m.visible = false; }
+    }
+    blades.forEach((b, i) => { b.rotation.z += dt * (0.8 + i * 0.1); });
+    clouds.forEach(c => { c.position.x += dt * 2; if (c.position.x > 600) c.position.x = -600; });
+
+    if (state === 'ready') { camTarget.set(6, 6.5, P.z + 19); lookTarget.set(0, 2.5, P.z - 5); }
+    else { camTarget.set(P.x * 0.5, Math.max(4, P.y * 0.45 + 7), P.z + (state === 'air' ? 24 : 20)); lookTarget.set(P.x * 0.7, P.y * 0.7 + 1, P.z - 16); }
+    const k = 1 - Math.exp(-dt * 4);
+    camPos.lerp(camTarget, k); look.lerp(lookTarget, k);
+    camera.position.copy(camPos);
+    if (shake > 0 && !reduce) { camera.position.x += (Math.random() - 0.5) * shake; camera.position.y += (Math.random() - 0.5) * shake; shake = Math.max(0, shake - dt * 1.5); }
+    camera.lookAt(look);
+    sky.position.copy(camera.position);
+    renderer.render(scene, camera);
+  }
+  requestAnimationFrame(frame);
+})();
+</script>
