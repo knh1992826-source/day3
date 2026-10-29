@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    안녕하세요
+    <h1>반갑습니다</h1>
+    <h2>반갑습니다</h2>
+    <div id="buttons"></div>
+
+    <script>
+        const plux = (a, b) => a + b;
+        const mi = (a, b) => a - b;
+
+        // 버튼 정보를 배열로 모아두고, 반복문으로 버튼 생성과 이벤트 연결을 한 번에 처리한다.
+        const ops = [
+            { id: 'a', label: '덧셈', fn: plux },
+            { id: 'b', label: '뺄셈', fn: mi },
+        ];
+
+        const box = document.getElementById('buttons');
+        for (const { id, label, fn } of ops) {
+            const btn = document.createElement('button');
+            btn.id = id;
+            btn.textContent = label;
+            btn.addEventListener('click', () => console.log(fn(4, 6)));
+            box.appendChild(btn);
+        }
+    </script>
+</body>
+</html>

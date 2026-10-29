@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>제주 카페·맛집</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Malgun Gothic', sans-serif; background: #eef8f6; color: #333; line-height: 1.7; }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 0 16px; }
+
+  header { background: linear-gradient(135deg, #2ec4b6, #1b9aaa); color: #fff; text-align: center; padding: 44px 16px 30px; }
+  header h1 { font-size: 2.2rem; }
+  header p { opacity: .95; margin-top: 8px; }
+
+  .wish { background: #fff; border-radius: 16px; padding: 22px 26px; box-shadow: 0 4px 12px rgba(0,0,0,.08); margin: 28px 0 8px; }
+  .wish h2 { color: #ff6b35; margin-bottom: 12px; }
+  .wish small { font-size: .9rem; color: #888; font-weight: normal; }
+  .wish ul { list-style: none; display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 8px; }
+  .wish li { display: flex; align-items: center; gap: 10px; background: #fff3e0; border-radius: 12px; padding: 10px 16px; }
+  .wish li b { flex: 1; }
+  .wish li span { color: #ff6b35; font-weight: bold; white-space: nowrap; }
+
+  .toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: center; margin: 24px 0 8px; }
+  .toolbar input, .toolbar select { font: inherit; padding: 8px 14px; border: 2px solid #1b9aaa; border-radius: 999px; background: #fff; color: #333; }
+  .toolbar input { width: 220px; }
+  .filters { display: flex; justify-content: center; gap: 10px; margin: 12px 0 24px; flex-wrap: wrap; }
+  .filters button { border: 2px solid #1b9aaa; background: #fff; color: #1b9aaa; padding: 8px 20px; border-radius: 999px; font: inherit; font-weight: bold; cursor: pointer; }
+  .filters button.active, .filters button:hover { background: #1b9aaa; color: #fff; }
+  .result { text-align: center; color: #888; font-size: .9rem; margin-bottom: 12px; }
+
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 20px; margin-bottom: 40px; }
+  .card { background: #fff; border-radius: 16px; padding: 22px 24px; box-shadow: 0 4px 12px rgba(0,0,0,.08); position: relative; display: flex; flex-direction: column; gap: 10px; transition: transform .2s; }
+  .card:hover { transform: translateY(-4px); }
+  .card.pick { border: 2px solid #ff6b35; }
+  .card .emoji { font-size: 2.4rem; }
+  .card h3 { color: #1b9aaa; }
+  .tag { align-self: flex-start; background: #d7f3ef; color: #1b9aaa; font-size: .8rem; font-weight: bold; padding: 2px 12px; border-radius: 999px; }
+  .badge { position: absolute; top: 16px; right: 16px; background: #ff6b35; color: #fff; font-size: .8rem; font-weight: bold; padding: 2px 12px; border-radius: 999px; }
+  .card p { color: #555; flex: 1; }
+  .score { display: flex; align-items: center; gap: 8px; font-size: .9rem; }
+  .bar { flex: 1; height: 8px; background: #e3eeec; border-radius: 4px; overflow: hidden; }
+  .bar span { display: block; height: 100%; background: linear-gradient(90deg, #2ec4b6, #1b9aaa); }
+  .source { font-size: .85rem; color: #1b9aaa; }
+  .empty { text-align: center; color: #888; padding: 40px 0; grid-column: 1 / -1; }
+
+  footer { text-align: center; padding: 20px; color: #888; font-size: .9rem; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🍊 <span id="title">제주 카페·맛집</span></h1>
+  <p id="subtitle"></p>
+</header>
+
+<div class="wrap">
+  <section class="wish">
+    <h2>📌 가보고 싶은 곳 <small id="wishCount"></small></h2>
+    <ul id="wishList"></ul>
+  </section>
+
+  <div class="toolbar">
+    <input type="search" id="q" placeholder="이름·설명·지역 검색 (예: 애월, 갈치)">
+    <select id="sort">
+      <option value="score">점수 높은 순</option>
+      <option value="name">이름 순</option>
+      <option value="file">원본 순서</option>
+    </select>
+  </div>
+  <div class="filters" id="filters"></div>
+  <div class="result" id="result"></div>
+  <div class="cards" id="cards"></div>
+</div>
+<footer>데이터: jeju_places.json</footer>
+
+<script src="jeju_data.js"></script>
+<script>
+const data = JEJU_DATA;
+const ICONS = { '카페': '☕', '음식점': '🍽️' };
+let current = '전체';
+
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function host(url) {
+  try { return new URL(url).hostname.replace(/^www\./, ''); } catch { return '출처 보기'; }
+}
+
+function render() {
+  const q = document.getElementById('q').value.trim().toLowerCase();
+  const sort = document.getElementById('sort').value;
+  const items = data.items
+    .filter(i => current === '전체' || i.category === current)
+    .filter(i => !q || (i.name + ' ' + i.description).toLowerCase().includes(q));
+  if (sort === 'score') items.sort((a, b) => b.score - a.score);
+  else if (sort === 'name') items.sort((a, b) => a.name.localeCompare(b.name, 'ko'));
+
+  document.getElementById('result').textContent = `${items.length}곳`;
+  const box = document.getElementById('cards');
+  if (!items.length) { box.innerHTML = '<div class="empty">검색 결과가 없습니다.</div>'; return; }
+  box.innerHTML = items.map(i => `
+    <article class="card ${i.selected ? 'pick' : ''}">
+      ${i.selected ? '<span class="badge">⭐ 추천</span>' : ''}
+      <div class="emoji">${ICONS[i.category] || '📍'}</div>
+      <span class="tag">${esc(i.category)}</span>
+      <h3>${esc(i.name)}</h3>
+      <p>${esc(i.description)}</p>
+      <div class="score"><span>점수 ${Number(i.score)}</span><div class="bar"><span style="width:${Math.max(0, Math.min(100, Number(i.score)))}%"></span></div></div>
+      ${/^https?:\/\//.test(i.source) ? `<a class="source" href="${esc(i.source)}" target="_blank" rel="noopener">출처: ${esc(host(i.source))}</a>` : ''}
+    </article>`).join('');
+}
+
+function renderWish() {
+  const picks = data.items.filter(i => i.selected === true).sort((a, b) => b.score - a.score);
+  document.getElementById('wishCount').textContent = `(${picks.length}곳)`;
+  document.getElementById('wishList').innerHTML = picks.length
+    ? picks.map(i => `<li>${ICONS[i.category] || '📍'} <b>${esc(i.name)}</b> <span>${Number(i.score)}점</span></li>`).join('')
+    : '<li>아직 선택한 곳이 없습니다.</li>';
+}
+
+function init() {
+  document.getElementById('title').textContent = data.topic;
+  document.getElementById('subtitle').textContent = data.region;
+  renderWish();
+  const cats = ['전체', ...new Set(data.items.map(i => i.category))];
+  const count = c => c === '전체' ? data.items.length : data.items.filter(i => i.category === c).length;
+  const f = document.getElementById('filters');
+  f.innerHTML = cats.map(c => `<button data-c="${esc(c)}" class="${c === current ? 'active' : ''}">${esc(c)} ${count(c)}</button>`).join('');
+  f.onclick = e => {
+    const b = e.target.closest('button'); if (!b) return;
+    current = b.dataset.c;
+    f.querySelectorAll('button').forEach(x => x.classList.toggle('active', x === b));
+    render();
+  };
+  document.getElementById('q').oninput = render;
+  document.getElementById('sort').onchange = render;
+  render();
+}
+
+init();
+</script>
+</body>
+</html>

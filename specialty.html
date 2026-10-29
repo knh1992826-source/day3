@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>제주 특산물 홍보</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Malgun Gothic', sans-serif; background: #fff7ec; color: #333; line-height: 1.7; }
+  .wrap { max-width: 1000px; margin: 0 auto; padding: 0 16px; }
+
+  header { background: linear-gradient(135deg, #ff9f1c, #ff6b35); color: #fff; text-align: center; padding: 44px 16px 30px; }
+  header h1 { font-size: 2.2rem; }
+  header p { opacity: .95; margin-top: 8px; }
+
+  nav { background: #fff; position: sticky; top: 0; z-index: 10; box-shadow: 0 2px 6px rgba(0,0,0,.1); }
+  nav ul { list-style: none; display: flex; justify-content: center; flex-wrap: wrap; }
+  nav a { display: block; padding: 14px 22px; color: #ff6b35; text-decoration: none; font-weight: bold; }
+  nav a:hover { background: #ffe8d0; }
+
+  .layout { display: grid; grid-template-columns: 1fr 280px; gap: 20px; margin: 28px auto; }
+  .main-col { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+  .box { background: #fff; border-radius: 16px; padding: 22px 26px; box-shadow: 0 4px 12px rgba(0,0,0,.08); scroll-margin-top: 70px; }
+  h2 { color: #ff6b35; margin-bottom: 12px; }
+  h3 { margin-bottom: 4px; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px; }
+  .item { background: #fff3e0; border-radius: 14px; padding: 16px 10px; text-align: center; transition: transform .2s; }
+  .item:hover { transform: translateY(-4px); }
+  .item .e { font-size: 2.6rem; }
+  .item p { font-size: .9rem; color: #666; }
+
+  article { border-bottom: 1px dashed #ffd9b3; padding: 14px 0; }
+  article:last-child { border-bottom: none; }
+  article .e { font-size: 1.6rem; margin-right: 6px; }
+  article .meta { font-size: .85rem; color: #999; }
+
+  aside .box { margin-bottom: 20px; }
+  aside ul { list-style: none; }
+  aside li { padding: 6px 0; border-bottom: 1px dashed #ffd9b3; font-size: .95rem; }
+  aside li:last-child { border-bottom: none; }
+
+  footer { background: #333; color: #ddd; text-align: center; padding: 24px 16px; font-size: .9rem; }
+
+  @media (max-width: 760px) { .layout { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🍊 제주 특산물 이야기 🌴</h1>
+  <p>바람과 돌과 바다가 키운 제주의 맛을 만나보세요</p>
+</header>
+
+<nav>
+  <ul>
+    <li><a href="#intro">🌴 소개</a></li>
+    <li><a href="#products">🍊 대표 특산물</a></li>
+    <li><a href="#story">📖 특산물 이야기</a></li>
+    <li><a href="#season">📅 제철 달력</a></li>
+  </ul>
+</nav>
+
+<div class="wrap layout">
+  <div class="main-col">
+    <section id="intro" class="box">
+      <h2>🌴 제주 특산물이란?</h2>
+      <p>화산섬 제주의 따뜻한 해양성 기후와 청정 바다, 미네랄이 풍부한 화산 토양이 만들어낸 농수산물입니다.
+         감귤부터 흑돼지, 갈치, 전복까지 제주의 자연이 담긴 맛을 소개합니다.</p>
+    </section>
+
+    <section id="products" class="box">
+      <h2>🍊 대표 특산물</h2>
+      <div class="grid">
+        <div class="item"><div class="e">🍊</div><h3>감귤</h3><p>새콤달콤 비타민C</p></div>
+        <div class="item"><div class="e">🥭</div><h3>한라봉</h3><p>향긋하고 과즙 가득</p></div>
+        <div class="item"><div class="e">🐖</div><h3>흑돼지</h3><p>쫄깃하고 고소한 맛</p></div>
+        <div class="item"><div class="e">🐟</div><h3>갈치</h3><p>은빛 바다의 보물</p></div>
+        <div class="item"><div class="e">🦪</div><h3>전복</h3><p>바다의 보양식</p></div>
+        <div class="item"><div class="e">🥕</div><h3>구좌 당근</h3><p>화산토에서 자란 단맛</p></div>
+        <div class="item"><div class="e">🍵</div><h3>녹차</h3><p>청정 차밭의 향기</p></div>
+        <div class="item"><div class="e">🥜</div><h3>우도 땅콩</h3><p>고소한 섬의 맛</p></div>
+      </div>
+    </section>
+
+    <section id="story" class="box">
+      <h2>📖 특산물 이야기</h2>
+      <article>
+        <h3><span class="e">🍊</span>감귤</h3>
+        <p class="meta">제철: 가을 ~ 겨울</p>
+        <p>제주를 대표하는 과일입니다. 온주밀감을 비롯해 한라봉, 천혜향, 레드향 등 다양한 품종이 있어
+           계절마다 다른 맛을 즐길 수 있습니다. 감귤 따기 체험도 인기입니다.</p>
+      </article>
+      <article>
+        <h3><span class="e">🐖</span>흑돼지</h3>
+        <p class="meta">제주 여행 필수 먹거리</p>
+        <p>쫄깃한 식감과 고소한 풍미가 특징입니다. 구이와 근고기, 돔베고기 등 다양한 방식으로 맛볼 수 있습니다.</p>
+      </article>
+      <article>
+        <h3><span class="e">🐟</span>갈치</h3>
+        <p class="meta">제주 바다의 은빛 보물</p>
+        <p>갈치조림과 갈치구이로 유명합니다. 부드러운 살과 담백한 맛이 밥과 잘 어울립니다.</p>
+      </article>
+      <article>
+        <h3><span class="e">🦪</span>전복</h3>
+        <p class="meta">해녀가 건져 올리는 바다의 맛</p>
+        <p>전복죽, 전복뚝배기, 전복회 등으로 즐기며 영양이 풍부해 보양식으로 사랑받습니다.</p>
+      </article>
+    </section>
+
+    <section id="season" class="box">
+      <h2>📅 제철 달력</h2>
+      <p>🌸 봄: 한라봉, 녹차 · ☀️ 여름: 전복, 성게 · 🍂 가을: 감귤, 당근 · ❄️ 겨울: 감귤, 갈치, 월동 무</p>
+      <p class="meta">※ 시기는 해마다 달라질 수 있습니다.</p>
+    </section>
+  </div>
+
+  <aside>
+    <div class="box">
+      <h2>🔥 인기 특산물</h2>
+      <ul>
+        <li>🥇 🍊 감귤</li>
+        <li>🥈 🐖 흑돼지</li>
+        <li>🥉 🐟 갈치</li>
+        <li>4️⃣ 🥭 한라봉</li>
+        <li>5️⃣ 🦪 전복</li>
+      </ul>
+    </div>
+    <div class="box">
+      <h2>🏞️ 함께 가볼 곳</h2>
+      <ul>
+        <li>🏔️ 한라산</li>
+        <li>🌅 성산일출봉</li>
+        <li>🌊 협재해수욕장</li>
+        <li>🍵 오설록 녹차밭</li>
+        <li>🚣 우도</li>
+      </ul>
+    </div>
+  </aside>
+</div>
+
+<footer>
+  <p>🌴🍊 제주 특산물 홍보 사이트 · © 2026 김재민 🍊🌴</p>
+</footer>
+
+</body>
+</html>

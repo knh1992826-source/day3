@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pixabay 이미지 슬라이더</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Malgun Gothic', sans-serif; background: #fff7ec; color: #333; padding: 24px 16px; }
+  .wrap { max-width: 800px; margin: 0 auto; }
+  h1 { color: #ff6b35; text-align: center; margin-bottom: 16px; }
+  .bar { display: flex; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+  .bar input { flex: 1; min-width: 160px; padding: 10px 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 1rem; }
+  button { padding: 10px 18px; border: none; border-radius: 8px; background: #ff9f1c; color: #fff; font-size: 1rem; cursor: pointer; }
+  button:hover { background: #ff6b35; }
+  button:disabled { background: #ccc; cursor: not-allowed; }
+  #msg { margin: 8px 0; min-height: 1.4em; color: #c0392b; text-align: center; }
+  .slider { position: relative; overflow: hidden; border-radius: 16px; background: #000; aspect-ratio: 16/10; }
+  .track { display: flex; height: 100%; transition: transform .4s; }
+  .track img { flex: 0 0 100%; width: 100%; height: 100%; object-fit: contain; }
+  .arrow { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,.5); padding: 10px 14px; }
+  #prev { left: 8px; } #next { right: 8px; }
+  .info { text-align: center; margin: 10px 0; }
+  .thumbs { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 6px; }
+  .thumbs img { height: 56px; border-radius: 6px; opacity: .5; cursor: pointer; }
+  .thumbs img.on { opacity: 1; outline: 2px solid #ff6b35; }
+  .pager { display: flex; justify-content: center; gap: 10px; margin-top: 10px; }
+
+  .bar .circle { flex: 0 0 auto; width: 140px; height: 140px; border-radius: 50%; font-size: 1.1rem; font-weight: bold; line-height: 1.4; background: linear-gradient(135deg, #ff9f1c, #ff6b35); box-shadow: 0 6px 14px rgba(255,107,53,.4); transition: transform .2s; }
+  .bar .circle:hover { transform: scale(1.08); }
+
+  /* 반응형: 기본은 모바일, 화면이 커지면 PC 레이아웃 */
+  h1 { font-size: 1.4rem; }
+  .bar button { flex: 1 1 100%; }
+  .bar input { flex: 1 1 100%; }
+  .pager button { flex: 1; padding: 12px 8px; font-size: .9rem; }
+  .arrow { padding: 12px 16px; }
+
+  @media (min-width: 600px) {
+    body { padding: 32px 24px; }
+    h1 { font-size: 1.8rem; }
+    .bar button { flex: 0 0 auto; }
+    .bar input { flex: 1; }
+    .pager button { flex: 0 0 auto; padding: 10px 22px; font-size: 1rem; }
+  }
+
+  @media (min-width: 1000px) {
+    .wrap { max-width: 1000px; }
+    .thumbs img { height: 72px; }
+    .info { font-size: 1.05rem; text-align: left; margin: 0; }
+    .viewer { display: grid; grid-template-columns: 1.7fr 1fr; grid-template-rows: auto auto 1fr; gap: 14px 20px; align-items: start; }
+    .slider { grid-row: 1 / 4; grid-column: 1; }
+    .info { grid-column: 2; grid-row: 1; }
+    .thumbs { grid-column: 2; grid-row: 2; flex-wrap: wrap; overflow: visible; }
+    .pager { grid-column: 2; grid-row: 3; justify-content: flex-start; margin: 0; align-self: end; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🖼️ Pixabay 이미지 슬라이더</h1>
+
+  <div class="bar" style="justify-content:center">
+    <button id="chatBtn" onclick="location.href='agent.html'">💬 에이전트와 채팅하기</button>
+  </div>
+
+  <div class="bar" style="justify-content:center">
+    <button id="menuBtn" class="circle" onclick="location.href='reactive.html'">🍔<br>카테고리<br>메뉴</button>
+  </div>
+
+  <div class="bar">
+    <input id="q" type="text" placeholder="검색어 (예: 제주감귤)">
+    <button id="go">검색</button>
+  </div>
+  <div id="msg"></div>
+
+  <div class="viewer">
+  <div class="slider">
+    <div class="track" id="track"></div>
+    <button class="arrow" id="prev">◀</button>
+    <button class="arrow" id="next">▶</button>
+  </div>
+  <div class="info" id="info">검색어를 입력하세요</div>
+  <div class="thumbs" id="thumbs"></div>
+  <div class="pager">
+    <button id="pagePrev" disabled>◀ 이전 10개</button>
+    <button id="pageNext" disabled>다음 10개 ▶</button>
+  </div>
+  </div>
+</div>
+
+<script>
+  const $ = id => document.getElementById(id);
+  let hits = [], idx = 0, page = 1, total = 0, query = '', timer = null;
+  const INTERVAL = 500; // 0.5초마다 다음 이미지
+  function play() { clearInterval(timer); timer = setInterval(() => hits.length && show(idx + 1), INTERVAL); }
+
+
+  async function load(p) {
+    query = p === 1 ? $('q').value.trim() : query;
+    if (!query) return $('msg').textContent = '검색어를 입력하세요.';
+    $('msg').textContent = '불러오는 중...';
+    try {
+      const url = `/api/pixabay?q=${encodeURIComponent(query)}&page=${p}`;
+      const res = await fetch(url);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `오류 ${res.status}`);
+      if (!data.hits.length) { $('msg').textContent = '검색 결과가 없습니다.'; return; }
+      hits = data.hits; total = data.totalHits; page = p; idx = 0;
+      $('msg').textContent = '';
+      render();
+    } catch (e) {
+      $('msg').textContent = e.message;
+    }
+  }
+
+  function render() {
+    $('track').innerHTML = hits.map(h => `<img src="${h.largeImageURL}" alt="${h.tags}">`).join('');
+    $('thumbs').innerHTML = hits.map((h, i) => `<img src="${h.previewURL}" data-i="${i}" alt="">`).join('');
+    show(0);
+    play();
+    $('pagePrev').disabled = page <= 1;
+    $('pageNext').disabled = page * 10 >= total;
+  }
+
+  function show(i) {
+    idx = (i + hits.length) % hits.length;
+    $('track').style.transform = `translateX(-${idx * 100}%)`;
+    $('info').textContent = `"${query}" ${(page - 1) * 10 + idx + 1} / ${total} · ${hits[idx].tags} · by ${hits[idx].user}`;
+    document.querySelectorAll('.thumbs img').forEach((t, n) => t.classList.toggle('on', n === idx));
+  }
+
+  $('go').onclick = () => load(1);
+  $('q').addEventListener('keydown', e => e.key === 'Enter' && load(1));
+  $('prev').onclick = () => { if (hits.length) { show(idx - 1); play(); } };
+  $('next').onclick = () => { if (hits.length) { show(idx + 1); play(); } };
+  $('pagePrev').onclick = () => load(page - 1);
+  $('pageNext').onclick = () => load(page + 1);
+  $('thumbs').onclick = e => { if (e.target.dataset.i) { show(+e.target.dataset.i); play(); } };
+</script>
+</body>
+</html>

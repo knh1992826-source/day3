@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>제주 특산물 에이전트</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { width: 100%; overflow-x: hidden; font-family: 'Malgun Gothic', sans-serif; background: #fff7ec; height: 100vh; display: flex; flex-direction: column; max-width: 600px; margin: 0 auto; }
+  header { background: linear-gradient(135deg, #ff9f1c, #ff6b35); color: #fff; text-align: center; padding: 14px; font-weight: bold; font-size: 1.1rem; }
+  #chat { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+  .msg { max-width: 75%; padding: 10px 14px; border-radius: 16px; line-height: 1.5; word-break: break-word; white-space: pre-wrap; }
+  .me { align-self: flex-end; background: #ff9f1c; color: #fff; border-bottom-right-radius: 4px; }
+  .bot { align-self: flex-start; background: #fff; color: #333; border-bottom-left-radius: 4px; box-shadow: 0 1px 4px rgba(0,0,0,.1); }
+  form { display: flex; gap: 8px; padding: 10px 12px; background: #fff; border-top: 1px solid #eee; }
+  input { flex: 1; min-width: 0; padding: 10px 14px; border: 1px solid #ccc; border-radius: 20px; font-size: 1rem; }
+  button { flex-shrink: 0; padding: 10px 20px; border: none; border-radius: 20px; background: #ff6b35; color: #fff; font-size: 1rem; cursor: pointer; }
+  button:hover { background: #e55a25; }
+  .note { text-align: center; font-size: .75rem; color: #999; padding: 4px 0 8px; background: #fff; }
+</style>
+</head>
+<body>
+  <header>🍊 제주 특산물 에이전트 <a href="index.html" style="float:left;color:#fff;text-decoration:none;font-size:.9rem">← 홈</a></header>
+  <div id="chat"></div>
+  <form id="form">
+    <input id="input" type="text" placeholder="제주 특산물에 대해 물어보세요" autocomplete="off">
+    <button type="submit">보내기</button>
+  </form>
+  <div class="note">※ 지금 답변은 가짜(데모) 답변입니다.</div>
+
+<script>
+  const chat = document.getElementById('chat');
+  const input = document.getElementById('input');
+  const replies = [
+    '안녕하세요, 재민님! 🍊 저는 제주 특산물을 알려주는 에이전트예요. 감귤, 흑돼지, 갈치 중에 어떤 게 궁금하세요?',
+    '그렇다면 제주 감귤 중 한라봉을 추천드려요! 🥭 향이 진하고 과즙이 풍부해서 처음 드시는 분께도 인기가 많아요.',
+    '아직 공부 중이에요! 5일차에 진짜로 알아볼게요.'
+  ];
+  let n = 0;
+
+  function add(text, cls) {
+    const d = document.createElement('div');
+    d.className = 'msg ' + cls;
+    d.textContent = text;
+    chat.appendChild(d);
+    chat.scrollTop = chat.scrollHeight;
+  }
+
+  document.getElementById('form').addEventListener('submit', e => {
+    e.preventDefault();
+    const text = input.value.trim();
+    if (!text) return;
+    add(text, 'me');
+    input.value = '';
+    const reply = replies[n++ % replies.length];
+    setTimeout(() => add(reply, 'bot'), 1000);
+  });
+</script>
+</body>
+</html>
